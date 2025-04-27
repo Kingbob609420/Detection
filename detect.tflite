@@ -1,0 +1,26 @@
+import 'dart:io';
+import 'package:tflite_flutter/tflite_flutter.dart';
+import 'package:image/image.dart' as img;
+
+Future<List> runInference(File imageFile) async {
+  final interpreter = await Interpreter.fromAsset('yolov8n.tflite');
+  final image = img.decodeImage(imageFile.readAsBytesSync())!;
+
+  // Resize & normalize to 640x640
+  final resized = img.copyResize(image, width: 640, height: 640);
+  var input = List.generate(1, (_) => List.generate(640, (_) => List.filled(640, 0.0)));
+
+  // Fill input tensor with image data (e.g. normalized RGB)
+  for (int y = 0; y < 640; y++) {
+    for (int x = 0; x < 640; x++) {
+      final pixel = resized.getPixel(x, y);
+      input[0][y][x] = pixel.red / 255.0; // Do this for R, G, B if needed
+    }
+  }
+
+  var output = List.filled(1 * 8400 * 85, 0.0).reshape([1, 8400, 85]); // Depends on model
+  interpreter.run(input, output);
+
+  return output;
+}
+
